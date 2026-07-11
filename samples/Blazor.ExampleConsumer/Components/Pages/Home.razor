@@ -17,11 +17,8 @@
 
     <h1 style="--i:1">
         Browser APIs,
-        <span class="word-rotator" aria-label="type-safe in C#, ergonomic in C#, promised in C#, generated in C#">
-            <span><span class="grad">type-safe</span> in&nbsp;C#.</span>
-            <span><span class="grad">ergonomic</span> in&nbsp;C#.</span>
-            <span><span class="grad">promised</span> in&nbsp;C#.</span>
-            <span><span class="grad">generated</span> in&nbsp;C#.</span>
+        <span class="word-rotator" aria-label="@CurrentPhraseText">
+            <span class="grad">@TypedWord</span>@TypedSuffix<span class="typewriter-cursor" aria-hidden="true"></span>
         </span>
     </h1>
 
@@ -260,7 +257,36 @@
 </section>
 
 @code {
+    private const string HeroPhraseSuffix = " in\u00a0C#.";
+    private const int TypeDelayMs = 80;
+    private const int DeleteDelayMs = 42;
+    private const int HoldDelayMs = 1_250;
+    private const int PauseDelayMs = 220;
+    private static readonly string[] HeroWords = ["type-safe", "ergonomic", "promised", "generated"];
+
     IJSObjectReference? _spotlight;
+    readonly CancellationTokenSource _typewriterCts = new();
+    Task? _typewriterTask;
+    TypewriterPhase _typewriterPhase = TypewriterPhase.Holding;
+    int _phraseIndex;
+    int _typedLength = HeroWords[0].Length + HeroPhraseSuffix.Length;
+
+    string CurrentWord => HeroWords[_phraseIndex];
+    string CurrentPhraseText => $"{CurrentWord}{HeroPhraseSuffix}".Replace('\u00a0', ' ');
+    string TypedWord => CurrentWord[..Math.Min(_typedLength, CurrentWord.Length)];
+    string TypedSuffix
+    {
+        get
+        {
+            var suffixLength = Math.Clamp(_typedLength - CurrentWord.Length, 0, HeroPhraseSuffix.Length);
+            return HeroPhraseSuffix[..suffixLength];
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _typewriterTask = RunTypewriterAsync(_typewriterCts.Token);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -282,10 +308,85 @@
 
     public async ValueTask DisposeAsync()
     {
+        _typewriterCts.Cancel();
+
+        if (_typewriterTask is not null)
+        {
+            try { await _typewriterTask; }
+            catch (OperationCanceledException) when (_typewriterCts.IsCancellationRequested) { }
+        }
+
+        _typewriterCts.Dispose();
+
         if (_spotlight is not null)
         {
             try { await _spotlight.DisposeAsync(); }
             catch { /* ignore */ }
         }
+    }
+
+    async Task RunTypewriterAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(GetTypewriterDelay(), cancellationToken);
+                AdvanceTypewriter();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    int GetTypewriterDelay() => _typewriterPhase switch
+    {
+        TypewriterPhase.Typing => TypeDelayMs,
+        TypewriterPhase.Deleting => DeleteDelayMs,
+        TypewriterPhase.Pausing => PauseDelayMs,
+        _ => HoldDelayMs
+    };
+
+    void AdvanceTypewriter()
+    {
+        var fullLength = CurrentWord.Length + HeroPhraseSuffix.Length;
+
+        switch (_typewriterPhase)
+        {
+            case TypewriterPhase.Holding:
+                _typewriterPhase = TypewriterPhase.Deleting;
+                break;
+
+            case TypewriterPhase.Deleting when _typedLength > 0:
+                _typedLength--;
+                break;
+
+            case TypewriterPhase.Deleting:
+                _phraseIndex = (_phraseIndex + 1) % HeroWords.Length;
+                _typewriterPhase = TypewriterPhase.Pausing;
+                break;
+
+            case TypewriterPhase.Pausing:
+                _typewriterPhase = TypewriterPhase.Typing;
+                break;
+
+            case TypewriterPhase.Typing when _typedLength < fullLength:
+                _typedLength++;
+                break;
+
+            case TypewriterPhase.Typing:
+                _typewriterPhase = TypewriterPhase.Holding;
+                break;
+        }
+    }
+
+    enum TypewriterPhase
+    {
+        Typing,
+        Holding,
+        Deleting,
+        Pausing
     }
 }
