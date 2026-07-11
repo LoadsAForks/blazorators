@@ -18,7 +18,10 @@
     <h1 style="--i:1">
         Browser APIs,
         <span class="word-rotator" aria-label="@CurrentPhraseText">
-            <span class="grad">@TypedWord</span>@TypedSuffix<span class="typewriter-cursor" aria-hidden="true"></span>
+            <span class="grad">@TypedWord</span>@if (TypedSuffix.Length > 0)
+            {
+                <span class="typewriter-suffix">@TypedSuffix</span>
+            }<span class="typewriter-cursor" aria-hidden="true"></span>
         </span>
     </h1>
 
@@ -257,7 +260,7 @@
 </section>
 
 @code {
-    private const string HeroPhraseSuffix = " in\u00a0C#.";
+    private const string HeroPhraseSuffix = "in\u00a0C#.";
     private const int TypeDelayMs = 80;
     private const int DeleteDelayMs = 42;
     private const int HoldDelayMs = 1_250;
@@ -272,7 +275,7 @@
     int _typedLength = HeroWords[0].Length + HeroPhraseSuffix.Length;
 
     string CurrentWord => HeroWords[_phraseIndex];
-    string CurrentPhraseText => $"{CurrentWord}{HeroPhraseSuffix}".Replace('\u00a0', ' ');
+    string CurrentPhraseText => $"{CurrentWord} {HeroPhraseSuffix}".Replace('\u00a0', ' ');
     string TypedWord => CurrentWord[..Math.Min(_typedLength, CurrentWord.Length)];
     string TypedSuffix
     {
