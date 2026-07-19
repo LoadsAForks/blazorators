@@ -8,7 +8,7 @@
    @onclick=SkipToMainAsync
    @onclick:preventDefault="true">Skip to content</a>
 
-<div class="app @(_navToggled ? "nav-toggled" : null)">
+<div class="app @(_navToggled ? "nav-toggled" : null) @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
     <aside class="app-sidebar" id="appSidebar">
         <NavMenu OnNavigate=@CloseNav />
     </aside>
@@ -19,6 +19,15 @@
     }
 
     <header class="app-header">
+        <button class="btn btn-icon btn-ghost desktop-nav-toggle"
+                type="button"
+                aria-label="@(_sidebarCollapsed ? "Expand navigation" : "Collapse navigation")"
+                aria-expanded="@(!_sidebarCollapsed)"
+                aria-controls="appSidebar"
+                @onclick=ToggleSidebar>
+            <Icon Name="menu" />
+        </button>
+
         <button class="btn btn-icon btn-ghost nav-toggle"
                 type="button"
                 aria-label="@(_navToggled ? "Close navigation" : "Open navigation")"
@@ -48,11 +57,58 @@
         <div class="content page-enter" @key=Nav.Uri>
             @Body
         </div>
+
+        <footer class="site-footer content" aria-label="Site footer">
+            <div class="site-footer-grid">
+                <div class="site-footer-brand">
+                    <a class="site-footer-wordmark" href="">
+                        <img src="logo.png" alt="" />
+                        <span>Blazorators</span>
+                    </a>
+                    <p>Type-safe browser APIs for Blazor, generated at compile time.</p>
+                    <a class="site-footer-repository"
+                       href="https://github.com/IEvangelist/blazorators"
+                       target="_blank" rel="noopener noreferrer">
+                        <Icon Name="github" Class="icon-sm" /> View source
+                    </a>
+                </div>
+
+                <div class="site-footer-column">
+                    <h2>Explore</h2>
+                    <a href=""><Icon Name="home" Class="icon-sm" /> Home</a>
+                    <a href="todos"><Icon Name="list-check" Class="icon-sm" /> Local storage</a>
+                    <a href="geolocation"><Icon Name="map-pin" Class="icon-sm" /> Geolocation</a>
+                    <a href="speak"><Icon Name="volume" Class="icon-sm" /> Speech</a>
+                </div>
+
+                <div class="site-footer-column">
+                    <h2>Project</h2>
+                    <a href="https://github.com/IEvangelist/blazorators/issues/new/choose"
+                       target="_blank" rel="noopener noreferrer">
+                        <Icon Name="alert-circle" Class="icon-sm" /> Create an issue
+                    </a>
+                    <a href="https://github.com/IEvangelist/blazorators/blob/main/LICENSE"
+                       target="_blank" rel="noopener noreferrer">
+                        <Icon Name="code" Class="icon-sm" /> MIT License
+                    </a>
+                    <a href="https://github.com/IEvangelist/blazorators"
+                       target="_blank" rel="noopener noreferrer">
+                        <Icon Name="github" Class="icon-sm" /> GitHub repository
+                    </a>
+                </div>
+            </div>
+
+            <div class="site-footer-bottom">
+                <span>&copy; @DateTime.UtcNow.Year Blazorators.</span>
+                <span>Built by <a href="https://davidpine.dev" target="_blank" rel="noopener noreferrer">David Pine <Icon Name="external-link" Class="icon-xs" /></a></span>
+            </div>
+        </footer>
     </main>
 </div>
 
 @code {
     bool _navToggled;
+    bool _sidebarCollapsed;
     ElementReference _main;
     string _runtimeShort = RuntimeInformation.FrameworkDescription;
 
@@ -62,6 +118,7 @@
     }
 
     void ToggleNav() => _navToggled = !_navToggled;
+    void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
     void CloseNav() => _navToggled = false;
 
     async Task SkipToMainAsync()
