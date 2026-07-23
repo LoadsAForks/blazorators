@@ -1,0 +1,131 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(DefaultTargetFrameworks)</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>JavaScript reference proxy runtime and hosting adapters for exhaustive Blazor DOM bindings (Blazor WebAssembly / in-process sync+async).</Description>
+    <Copyright>Copyright © David Pine. All rights reserved. Licensed under the MIT License.</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <CurrentDate>$([System.DateTime]::Now.ToString(yyyyMMdd))</CurrentDate>
+    <ClientVersion Condition=" '$(IsPreview)' != 'true' ">$(ClientOfficialVersion)</ClientVersion>
+    <ClientVersion Condition=" '$(IsPreview)' == 'true' ">$(ClientPreviewVersion)</ClientVersion>
+    <VersionSuffix Condition=" '$(IsNightly)' == 'true' ">nightly-$(CurrentDate)</VersionSuffix>
+    <VersionSuffix Condition=" '$(IsPreview)' == 'true' ">preview</VersionSuffix>
+    <Version Condition=" '$(VersionSuffix)' == '' ">$(ClientVersion)</Version>
+    <Version Condition=" '$(VersionSuffix)' != '' ">$(ClientVersion)-$(VersionSuffix)</Version>
+    <FileVersion>$(ClientVersion)</FileVersion>
+    <Authors>David Pine</Authors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>Blazor.DOM.WebAssembly</AssemblyName>
+    <Title>Blazor DOM WebAssembly – In-process sync+async DOM interop runtime for Blazor WebAssembly.</Title>
+    <PackageId>Blazor.DOM.WebAssembly</PackageId>
+    <PackageTags>dotnet;dotnetcore;csharp;blazor;webassembly;wasm;dom;interop;jsinterop;</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/IEvangelist/blazorators</PackageProjectUrl>
+    <PublishRepositoryUrl Condition=" '$(ProjectRef)' != 'True' ">true</PublishRepositoryUrl>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ShippingScope>External</ShippingScope>
+    <SigningType>Product</SigningType>
+    <DebugType>embedded</DebugType>
+    <IncludeSymbols>false</IncludeSymbols>
+    <IncludeSource>false</IncludeSource>
+    <RootNamespace>Blazor.DOM.WebAssembly</RootNamespace>
+    <DomGenerationHost>WebAssembly</DomGenerationHost>
+    <!-- Generated lib.dom inheritance intentionally preserves obsolete bases and
+         TypeScript redeclarations that C# reports as member hiding. -->
+    <NoWarn>NU5125;NU5039;CS0108;CS0612;CS8766;</NoWarn>
+    <Optimize Condition="'$(Configuration)'=='Release'">true</Optimize>
+    <RepositoryUrl>https://github.com/IEvangelist/blazorators</RepositoryUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <RepositoryType>git</RepositoryType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
+    <PackageIcon>logo.png</PackageIcon>
+    <_SharedDomStaticAssetSource>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\Blazor.DOM\wwwroot\blazorators.dom.js'))</_SharedDomStaticAssetSource>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ImplicitUsings)' == 'enable' or '$(ImplicitUsings)' == 'true'">
+    <Using Include="Microsoft.JSInterop" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="MinVer">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup Label="Shared runtime sources">
+    <Compile Include="..\Blazor.DOM\Abstractions\**\*.cs"
+             LinkBase="SharedRuntime\Abstractions" />
+    <Compile Include="..\Blazor.DOM\Exceptions\**\*.cs"
+             LinkBase="SharedRuntime\Exceptions" />
+    <Compile Include="..\Blazor.DOM\Proxies\**\*.cs"
+             LinkBase="SharedRuntime\Proxies" />
+    <Compile Include="..\Blazor.DOM\Runtime\DomModulePath.cs"
+             Link="SharedRuntime\Runtime\DomModulePath.cs" />
+    <Compile Include="..\Blazor.DOM\Runtime\DomRuntimeTransport.cs"
+             Link="SharedRuntime\Runtime\DomRuntimeTransport.cs" />
+  </ItemGroup>
+
+  <Import Project="..\Blazor.DOM.Generation.targets" />
+
+  <ItemGroup Label="Generated DOM package metadata">
+    <None Include="$(DomGeneratedOutputRoot)\WebAssembly\host-manifest.json"
+          Pack="true"
+          PackagePath="build\Blazor.DOM.WebAssembly.host-manifest.json" />
+    <None Include="$(DomGeneratedOutputRoot)\host-parity.json"
+          Pack="true"
+          PackagePath="build\Blazor.DOM.WebAssembly.host-parity.json" />
+  </ItemGroup>
+
+  <Target Name="StageDomStaticAsset"
+          BeforeTargets="ResolveProjectStaticWebAssets">
+    <PropertyGroup>
+      <_PackageDomStaticAssetRoot>$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)dom-static-assets\'))</_PackageDomStaticAssetRoot>
+      <_PackageDomStaticAsset>$(_PackageDomStaticAssetRoot)blazorators.dom.js</_PackageDomStaticAsset>
+    </PropertyGroup>
+    <MakeDir Directories="$(_PackageDomStaticAssetRoot)" />
+    <Copy SourceFiles="$(_SharedDomStaticAssetSource)"
+          DestinationFiles="$(_PackageDomStaticAsset)"
+          SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <Content Include="$(_PackageDomStaticAsset)"
+               Link="wwwroot\blazorators.dom.js"
+               CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CorrectPackagedDomStaticAssetRoot"
+          AfterTargets="ResolveProjectStaticWebAssets">
+    <ItemGroup>
+      <StaticWebAsset Update="$(_PackageDomStaticAsset)">
+        <ContentRoot>$(_PackageDomStaticAssetRoot)</ContentRoot>
+      </StaticWebAsset>
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup Label="Files">
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\logo.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

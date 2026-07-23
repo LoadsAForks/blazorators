@@ -1,0 +1,31 @@
+{
+  "$schema": "../Blazor.DOM/profiles.schema.json",
+  "name": "Permissions",
+  "description": "Permissions API - query browser permission state and observe changes.",
+  "rootSymbols": ["Permissions", "PermissionStatus"],
+  "secureContext": false,
+  "requiresUserActivation": false,
+  "features": ["permissions"],
+  "outputNamespace": "Blazor.DOM",
+  "outputSubdirectory": "Profiles/Permissions",
+  "minimalDependencyContracts": true,
+  "memberIncludes": {
+    "Permissions": ["query"],
+    "PermissionStatus": [
+      "name",
+      "state",
+      "addEventListener",
+      "removeEventListener"
+    ],
+    "EventListener": ["*"],
+    "EventListenerObject": ["*"],
+    "PermissionStatusEventMap": ["*"]
+  },
+  "entryPoints": [
+    {
+      "name": "Permissions",
+      "symbol": "Permissions",
+      "javaScriptPath": "navigator.permissions"
+    }
+  ]
+}

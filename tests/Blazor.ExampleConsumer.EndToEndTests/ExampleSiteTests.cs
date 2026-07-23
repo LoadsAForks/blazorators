@@ -1,6 +1,7 @@
 using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
 using Microsoft.Playwright;
+using System.Text.RegularExpressions;
 
 namespace Blazor.ExampleConsumer.EndToEndTests;
 
@@ -18,27 +19,72 @@ public sealed class ExampleSiteTests(
         new("/speak", "Text-to-speech", "Text-to-speech"),
         new("/listen", "Speech-to-text", "Speech-to-text"),
         new("/sandbox", "Sandbox", "Sandbox"),
-        new("/audio", "Audio", "Audio")
+        new("/audio", "Audio", "Audio"),
+        new("/dom-e2e", "DOM API lab", "Every browser API. Generated for Blazor."),
+        new("/dom-e2e/capabilities", "DOM capability catalog", "DOM capability catalog"),
+        new("/dom-e2e/permissions", "Permissions", "Permissions"),
+        new("/dom-e2e/clipboard", "Clipboard", "Clipboard"),
+        new("/dom-e2e/web-share", "Web Share", "Web Share"),
+        new("/dom-e2e/wake-lock", "Wake Lock", "Wake Lock"),
+        new("/dom-e2e/storage-management", "Storage management", "Storage management"),
+        new("/dom-e2e/screen", "Screen", "Screen"),
+        new("/dom-e2e/performance", "Performance", "Performance"),
+        new("/dom-e2e/web-crypto", "Web Crypto", "Web Crypto"),
+        new("/dom-e2e/credentials", "Credentials & WebAuthn", "Credentials & WebAuthn"),
+        new("/dom-e2e/offline-storage", "Offline storage", "Offline storage"),
+        new("/dom-e2e/browser-coordination", "Browser coordination", "Browser coordination"),
+        new("/dom-e2e/media-devices", "Media devices", "Media devices"),
+        new("/dom-e2e/notifications", "Notifications", "Notifications"),
+        new("/dom-e2e/file-system-access", "File System Access", "File System Access")
     ];
 
     public static IEnumerable<object[]> RouteData() =>
-        Routes.Select(route => new object[] { route });
+        Routes.Select(route => new object[]
+        {
+            route.Path,
+            route.TitleFragment,
+            route.Heading
+        });
 
     [Theory]
     [MemberData(nameof(RouteData))]
-    public async Task Route_IsAccessible_Responsive_AndOverflowSafe(PageRoute route)
+    public async Task Route_IsAccessible_Responsive_AndOverflowSafe(
+        string path,
+        string titleFragment,
+        string heading)
     {
-        await using var context = await NewContextAsync();
+        await using var context = await NewContextAsync(
+            reducedMotion: ReducedMotion.Reduce);
         var page = await context.NewPageAsync();
         var consoleErrors = TrackConsoleErrors(page);
 
-        await page.GotoAsync(site.UrlFor(route.Path), new PageGotoOptions
+        await page.GotoAsync(site.UrlFor(path), new PageGotoOptions
         {
             WaitUntil = WaitUntilState.NetworkIdle
         });
 
-        await ExpectHeadingAsync(page, route.Heading);
-        Assert.Contains(route.TitleFragment, await page.TitleAsync(), StringComparison.OrdinalIgnoreCase);
+        await ExpectHeadingAsync(page, heading);
+        Assert.Contains(
+            titleFragment,
+            await page.TitleAsync(),
+            StringComparison.OrdinalIgnoreCase);
+
+        if (path.StartsWith("/dom-e2e/", StringComparison.Ordinal)
+            && path != "/dom-e2e/capabilities")
+        {
+            await page.WaitForFunctionAsync(
+                """
+                () => ['ready', 'unavailable'].includes(
+                    document.querySelector('[data-probe-phase]')?.dataset.probePhase)
+                """);
+            var expectedPhase = path == "/dom-e2e/web-share"
+                ? new Regex("^(ready|unavailable)$")
+                : new Regex("^ready$");
+            await Assertions.Expect(page.Locator("[data-probe-phase]"))
+                .ToHaveAttributeAsync("data-probe-phase", expectedPhase);
+            await Assertions.Expect(page.Locator(".setup-grid article")).ToHaveCountAsync(3);
+            await Assertions.Expect(page.Locator("#capability-action")).ToBeVisibleAsync();
+        }
 
         await AssertNoAxeViolationsAsync(page);
         await AssertNoDocumentOverflowAsync(page);
@@ -47,6 +93,66 @@ public sealed class ExampleSiteTests(
         await page.SetViewportSizeAsync(390, 844);
         await AssertNoDocumentOverflowAsync(page);
         await AssertNoClippedVisibleTextAsync(page);
+    }
+
+    [Fact]
+    public async Task CapabilitySidebar_DisclosesOnDemand_AndKeepsPageFragmentsLocal()
+    {
+        await using var context = await NewContextAsync(
+            reducedMotion: ReducedMotion.Reduce);
+        var page = await context.NewPageAsync();
+        await page.SetViewportSizeAsync(1280, 720);
+        await page.GotoAsync(site.UrlFor("/dom-e2e/web-crypto"), new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.NetworkIdle
+        });
+        await page.WaitForFunctionAsync(
+            "() => document.querySelector('[data-probe-phase]')?.dataset.probePhase === 'ready'");
+
+        var disclosure = page.Locator(".nav-capabilities");
+        Assert.False(await disclosure.EvaluateAsync<bool>("element => element.open"));
+        await Assertions.Expect(page.Locator(".nav-count")).ToHaveTextAsync("14");
+        await Assertions.Expect(page.Locator(".nav-submenu")).ToBeHiddenAsync();
+
+        await disclosure.Locator("summary").ClickAsync();
+
+        Assert.True(await disclosure.EvaluateAsync<bool>("element => element.open"));
+        await Assertions.Expect(page.Locator(".nav-submenu")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator(".nav-submenu .nav-subitem")).ToHaveCountAsync(14);
+        Assert.True(
+            await page.EvaluateAsync<bool>(
+                """
+                () => {
+                    const sidebar = document.querySelector('.app-sidebar');
+                    const nav = document.querySelector('.app-sidebar .nav');
+                    const footer = document.querySelector('.app-sidebar .nav-footer');
+                    if (!sidebar || !nav || !footer) {
+                        return false;
+                    }
+
+                    const sidebarBox = sidebar.getBoundingClientRect();
+                    const footerBox = footer.getBoundingClientRect();
+                    return Math.abs(sidebarBox.height - innerHeight) <= 1
+                        && getComputedStyle(nav).overflowY === 'auto'
+                        && nav.scrollHeight > nav.clientHeight
+                        && footerBox.bottom <= sidebarBox.bottom + 1;
+                }
+                """),
+            "The capability list should scroll inside the viewport-height sidebar without displacing its footer.");
+
+        await page.GetByRole(
+            AriaRole.Link,
+            new() { Name = "Try it in this browser" }).ClickAsync();
+        await Assertions.Expect(page).ToHaveURLAsync(
+            new Regex(@"/dom-e2e/web-crypto#try-it$"));
+        await Assertions.Expect(page.Locator("#try-it")).ToBeInViewportAsync();
+
+        await page.GetByRole(
+            AriaRole.Link,
+            new() { Name = "View implementation" }).ClickAsync();
+        await Assertions.Expect(page).ToHaveURLAsync(
+            new Regex(@"/dom-e2e/web-crypto#implementation$"));
+        await Assertions.Expect(page.Locator("#implementation")).ToBeInViewportAsync();
     }
 
     [Fact]
@@ -381,6 +487,7 @@ public sealed class ExampleSiteTests(
                 Height = viewportHeight
             },
             ReducedMotion = reducedMotion,
+            ColorScheme = ColorScheme.Light,
             Geolocation = new Geolocation
             {
                 Latitude = 47.6062f,
@@ -419,7 +526,9 @@ public sealed class ExampleSiteTests(
 
     static async Task ExpectHeadingAsync(IPage page, string heading)
     {
-        await Assertions.Expect(page.GetByRole(AriaRole.Heading, new() { Name = heading })).ToBeVisibleAsync();
+        await Assertions.Expect(page.GetByRole(
+            AriaRole.Heading,
+            new() { Name = heading, Level = 1 })).ToBeVisibleAsync();
     }
 
     static async Task AssertNoAxeViolationsAsync(IPage page)

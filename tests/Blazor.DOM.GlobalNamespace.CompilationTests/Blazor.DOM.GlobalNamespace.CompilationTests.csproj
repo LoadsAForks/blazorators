@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <DomGenerationProfile>WakeLock</DomGenerationProfile>
+    <DomIncludeSupplemental>true</DomIncludeSupplemental>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Blazor.DOM.ProfileRuntime\Blazor.DOM.ProfileRuntime.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\..\src\Blazor.DOM.Generation.targets" />
+</Project>

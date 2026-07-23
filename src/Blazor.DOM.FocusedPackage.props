@@ -1,0 +1,75 @@
+<Project>
+  <PropertyGroup>
+    <DomGenerationProfile>$(DomProfileName)</DomGenerationProfile>
+    <DomGenerationHost>$(DomProfileHost)</DomGenerationHost>
+  </PropertyGroup>
+
+  <Import Project="Blazor.DOM.Generation.targets" />
+
+  <ItemGroup Label="Generated focused DOM package metadata">
+    <None Include="$(DomGeneratedSourceRoot)\$(DomProfileHost)\host-manifest.json"
+          Pack="true"
+          PackagePath="build\$(PackageId).host-manifest.json" />
+    <None Include="$(DomGeneratedSourceRoot)\host-parity.json"
+          Pack="true"
+          PackagePath="build\$(PackageId).host-parity.json" />
+    <None Include="$(DomGeneratedSourceRoot)\profile-coverage.json"
+          Pack="true"
+          PackagePath="build\$(PackageId).profile-coverage.json" />
+  </ItemGroup>
+
+  <ItemGroup Label="Shared DOM runtime sources">
+    <Compile Include="..\Blazor.DOM\Abstractions\**\*.cs"
+             LinkBase="SharedRuntime\Abstractions" />
+    <Compile Include="..\Blazor.DOM\Exceptions\**\*.cs"
+             LinkBase="SharedRuntime\Exceptions" />
+    <Compile Include="..\Blazor.DOM\Proxies\**\*.cs"
+             LinkBase="SharedRuntime\Proxies" />
+    <Compile Include="..\Blazor.DOM\Runtime\DomModulePath.cs"
+             Link="SharedRuntime\Runtime\DomModulePath.cs" />
+    <Compile Include="..\Blazor.DOM\Runtime\DomRuntimeTransport.cs"
+             Link="SharedRuntime\Runtime\DomRuntimeTransport.cs" />
+    <Content Include="..\Blazor.DOM\wwwroot\blazorators.dom.js"
+             Link="wwwroot\blazorators.dom.js"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(DomProfileHost)' == 'Server'" Label="Server runtime sources">
+    <Compile Include="..\Blazor.DOM\Browser\ServerBrowser.cs"
+             Link="SharedRuntime\Browser\ServerBrowser.cs" />
+    <Compile Include="..\Blazor.DOM\Runtime\ServerDomRuntime.cs"
+             Link="SharedRuntime\Runtime\ServerDomRuntime.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(DomProfileHost)' == 'WebAssembly'" Label="WebAssembly runtime sources">
+    <Compile Include="..\Blazor.DOM.WebAssembly\Abstractions\**\*.cs"
+             LinkBase="SharedRuntime\WebAssembly\Abstractions" />
+    <Compile Include="..\Blazor.DOM.WebAssembly\Browser\**\*.cs"
+             LinkBase="SharedRuntime\WebAssembly\Browser" />
+    <Compile Include="..\Blazor.DOM.WebAssembly\Proxies\**\*.cs"
+             LinkBase="SharedRuntime\WebAssembly\Proxies" />
+    <Compile Include="..\Blazor.DOM.WebAssembly\Runtime\**\*.cs"
+             LinkBase="SharedRuntime\WebAssembly\Runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.JSInterop" />
+    <Using Include="System.Collections.Concurrent" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(DomProfileHost)' == 'Server'">
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(DomProfileHost)' == 'WebAssembly'">
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <Target Name="ValidateFocusedDomStaticAssetBasePath"
+          BeforeTargets="PrepareForBuild"
+          Condition="!$([System.String]::Equals('$(AssemblyName)', '$(PackageId)', System.StringComparison.Ordinal))">
+    <Error Text="Focused DOM packages require AssemblyName and PackageId to match so the runtime module resolves from the package static web asset path." />
+  </Target>
+</Project>
